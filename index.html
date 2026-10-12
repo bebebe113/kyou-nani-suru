@@ -69,6 +69,10 @@
   .row button, .row input { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
     background: var(--card); color: var(--text); font-size: .95rem; }
   .row button { cursor: pointer; }
+  .post { display: block; text-align: center; padding: 12px; border-radius: 12px; border: 2px dashed var(--accent);
+    color: var(--accent); font-weight: bold; text-decoration: none; }
+  .post:hover { background: var(--bg); }
+  .note { color: var(--muted); font-size: .8rem; margin: 8px 0 0; text-align: center; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .chip { padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); font-size: .85rem; }
   .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 0 0 4px; }
@@ -109,6 +113,12 @@
       <button id="again">もう一回</button>
       <button id="share">シェア</button>
     </div>
+  </section>
+
+  <section class="card">
+    <div class="label">みんなの候補を募集中</div>
+    <a class="post" href="https://docs.google.com/forms/d/e/1FAIpQLSfXbOd36gkaow4mEvpaDyPeE8IMZNh-pB5_h906j2ADlJulBw/viewform" target="_blank" rel="noopener">💡 「やってみたいこと」を投稿する</a>
+    <p class="note">採用されるとスロットに追加され、ニックネームが表示されます</p>
   </section>
 
   <section class="card">
