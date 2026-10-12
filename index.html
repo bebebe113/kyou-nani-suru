@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>きょうなにする？スロット</title>
+<meta name="description" content="今日なにするか迷ったら、スロットを回すだけ。「サイコロで散歩」「動物の鳴き声だけで会話」など、ちょっと笑えてギリギリ今日できることが決まります。ひとりでも、ふたりでも。">
+<link rel="canonical" href="https://bebebe113.github.io/kyou-nani-suru/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
+<!-- リンクカード（X / LINE / Facebook など） -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="きょうなにする？">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:url" content="https://bebebe113.github.io/kyou-nani-suru/">
+<meta property="og:title" content="きょうなにする？｜迷ったらスロットにおまかせ">
+<meta property="og:description" content="ちょっと笑えて、ギリギリ今日できること。スロットを回して今日の予定を決めよう。ひとりでも、ふたりでも。">
+<meta property="og:image" content="https://bebebe113.github.io/kyou-nani-suru/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="スロットマシンに「動物の鳴き声だけで30分会話」が当たっている画面">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="きょうなにする？｜迷ったらスロットにおまかせ">
+<meta name="twitter:description" content="ちょっと笑えて、ギリギリ今日できること。スロットを回して今日の予定を決めよう。">
+<meta name="twitter:image" content="https://bebebe113.github.io/kyou-nani-suru/og.png">
 <style>
   :root {
     --bg: #fff8f2; --card: #ffffff; --text: #2b2330; --muted: #7a6f80;
@@ -363,8 +381,9 @@ $("spin").onclick = spin;
 $("again").onclick = spin;
 $("share").onclick = async () => {
   const text = `今日は「${$("rName").textContent}」に決定！ #きょうなにする`;
-  if (navigator.share) { try { await navigator.share({ text }); } catch {} }
-  else { try { await navigator.clipboard.writeText(text); alert("コピーしました"); } catch {} }
+  const url = location.origin + location.pathname;
+  if (navigator.share) { try { await navigator.share({ text, url }); } catch {} }
+  else { try { await navigator.clipboard.writeText(`${text}\n${url}`); alert("コピーしました"); } catch {} }
 };
 $("addBtn").onclick = () => {
   const v = $("customInput").value.trim();
