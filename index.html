@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>きょうなにする？スロット</title>
+<style>
+  :root {
+    --bg: #fff8f2; --card: #ffffff; --text: #2b2330; --muted: #7a6f80;
+    --accent: #ff6b6b; --accent2: #845ef7; --border: #f0e4da;
+    --machine: #2b2330; --reel: #fffdf8; --row: 64px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1d1a22; --card: #29252f; --text: #f3eef6; --muted: #a79fb0; --border: #3a3442; --machine: #3a3442; --reel: #fffdf8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; text-align: center; margin: 0 0 4px; }
+  .sub { text-align: center; color: var(--muted); margin: 0 0 20px; font-size: .9rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+  .label { font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+  .seg { display: flex; gap: 6px; }
+  .seg button { flex: 1; padding: 10px 6px; border-radius: 999px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); font-size: .95rem; cursor: pointer; }
+  .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ---- スロット ---- */
+  .machine { background: var(--machine); border-radius: 22px; padding: 14px; margin-bottom: 16px;
+    box-shadow: 0 8px 0 rgba(0,0,0,.15); }
+  .machine .top { display: flex; justify-content: space-between; align-items: center; color: #ffd43b;
+    font-weight: bold; font-size: .85rem; padding: 0 4px 10px; letter-spacing: .1em; }
+  .lamps { display: flex; gap: 6px; }
+  .lamps i { width: 10px; height: 10px; border-radius: 50%; background: #ffd43b; opacity: .35; }
+  .machine.spinning .lamps i { animation: blink .3s infinite alternate; }
+  .machine.spinning .lamps i:nth-child(2) { animation-delay: .1s; }
+  .machine.spinning .lamps i:nth-child(3) { animation-delay: .2s; }
+  .window { position: relative; height: calc(var(--row) * 5); overflow: hidden; border-radius: 12px; background: var(--reel); }
+  .window::before, .window::after { content: ""; position: absolute; left: 0; right: 0; height: calc(var(--row) * 2);
+    z-index: 2; pointer-events: none; }
+  .window::before { top: 0; background: linear-gradient(var(--reel) 5%, rgba(255,253,248,.4)); }
+  .window::after { bottom: 0; background: linear-gradient(rgba(255,253,248,.4), var(--reel) 95%); }
+  .hit { position: absolute; top: calc(var(--row) * 2); left: 0; right: 0; height: var(--row); z-index: 3;
+    border-top: 3px solid var(--accent); border-bottom: 3px solid var(--accent); pointer-events: none; }
+  .hit::before, .hit::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%);
+    border: 10px solid transparent; }
+  .hit::before { left: 0; border-left-color: var(--accent); }
+  .hit::after { right: 0; border-right-color: var(--accent); }
+  .strip { will-change: transform; }
+  .strip.blur { filter: blur(1.2px); }
+  .item { height: var(--row); display: flex; align-items: center; gap: 10px; padding: 0 28px;
+    color: #2b2330; font-weight: bold; font-size: 1rem; line-height: 1.25; }
+  .item .e { font-size: 1.6rem; flex: 0 0 auto; }
+  .count { text-align: right; color: var(--muted); font-size: .75rem; padding: 8px 4px 0; }
+
+  .spin { display: block; width: 100%; padding: 16px; font-size: 1.2rem; font-weight: bold; border: 0; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; cursor: pointer;
+    box-shadow: 0 5px 0 #c94f6d; transition: transform .08s, box-shadow .08s; }
+  .spin:active { transform: translateY(4px); box-shadow: 0 1px 0 #c94f6d; }
+  .spin:disabled { opacity: .5; cursor: default; }
+  .result { text-align: center; display: none; margin-top: 16px; }
+  .result.show { display: block; animation: pop .4s ease; }
+  .result .emoji { font-size: 3rem; }
+  .result .name { font-size: 1.3rem; font-weight: bold; margin: 4px 0 12px; }
+  .result .by { color: var(--muted); font-size: .85rem; margin: -6px 0 12px; }
+  .result .by:empty { display: none; }
+  .row { display: flex; gap: 8px; }
+  .row button, .row input { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: .95rem; }
+  .row button { cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); font-size: .85rem; }
+  .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 0 0 4px; }
+  @keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes blink { to { opacity: 1; } }
+  @media (max-width: 380px) { .item { font-size: .9rem; padding: 0 22px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎰 きょうなにする？</h1>
+  <p class="sub">迷ったらスロットにおまかせ</p>
+
+  <section class="card">
+    <div class="label">だれと？</div>
+    <div class="seg" id="who">
+      <button data-v="solo" class="on">ひとり</button>
+      <button data-v="couple">ふたり</button>
+    </div>
+  </section>
+
+  <div class="machine" id="machine">
+    <div class="top"><span>KYOU NANI SURU?</span><span class="lamps"><i></i><i></i><i></i></span></div>
+    <div class="window">
+      <div class="strip" id="strip"></div>
+      <div class="hit"></div>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <button class="spin" id="spin">スタート！</button>
+
+  <section class="card result" id="result">
+    <div class="emoji" id="rEmoji"></div>
+    <div class="name" id="rName"></div>
+    <div class="by" id="rBy"></div>
+    <div class="row">
+      <button id="again">もう一回</button>
+      <button id="share">シェア</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="label">自分たちの候補を追加</div>
+    <div class="row">
+      <input id="customInput" placeholder="例：あの店のパンケーキ" maxlength="24">
+      <button id="addBtn" style="flex:0 0 72px">追加</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+</main>
+
+<script>
+// ---- 内蔵の候補データ（who: solo/couple/both）----
+// 方針：ちょっと笑えて、でもギリギリ今日できるもの
+// 同じ内容をスプレッドシートにも「初期データ」として登録済み。シートが読めないときだけこちらを使う
+const ACTIVITIES = [
+  // どちらでも
+  { name: "サイコロで曲がる方向を決めて散歩", emoji: "🎲", who: "both" },
+  { name: "その路線の終点まで行ってみる", emoji: "🚃", who: "both" },
+  { name: "今日の食事を全部「赤いもの」にする", emoji: "🍅", who: "both" },
+  { name: "コンビニの新商品を全部買って審査", emoji: "🏪", who: "both" },
+  { name: "地図アプリを適当に指さして行く", emoji: "👆", who: "both" },
+  { name: "牛丼チェーン3社を食べ比べ", emoji: "🍚", who: "both" },
+  { name: "空港で飛行機を見るだけ", emoji: "✈️", who: "both" },
+  { name: "100均で「最強の武器」を作る", emoji: "🗡️", who: "both" },
+  { name: "1000円で一番楽しい買い物をする", emoji: "💴", who: "both" },
+  { name: "家にあるもので謎料理を開発", emoji: "🍲", who: "both" },
+  { name: "冷蔵庫の残り物でフルコース", emoji: "🍽️", who: "both" },
+  { name: "部屋でキャンプする", emoji: "🏕️", who: "both" },
+  { name: "全力でラジオ体操第二", emoji: "🤸", who: "both" },
+  { name: "近所のマンホールの写真を集める", emoji: "📷", who: "both" },
+  { name: "家まで一駅ずつ歩いて帰る", emoji: "🚶", who: "both" },
+  { name: "回転寿司で同じ色の皿だけ食べる", emoji: "🍣", who: "both" },
+  { name: "1日中パジャマで過ごす", emoji: "🛌", who: "both" },
+  { name: "映画の予告編だけ10本観る", emoji: "🎬", who: "both" },
+  { name: "銭湯の湯船を全種類制覇", emoji: "♨️", who: "both" },
+  { name: "商店街で「おすすめ」を聞きまくる", emoji: "🗣️", who: "both" },
+  { name: "昭和の喫茶店でナポリタン", emoji: "🍝", who: "both" },
+  { name: "人生最大のおにぎりを作る", emoji: "🍙", who: "both" },
+  { name: "高いビルを階段だけで登る", emoji: "🏢", who: "both" },
+  { name: "自分の名前が入った商品を探す", emoji: "🔍", who: "both" },
+  { name: "地元で一番古いお店に行く", emoji: "🏚️", who: "both" },
+  { name: "知らない曲だけでカラオケ", emoji: "🎤", who: "both" },
+  { name: "激辛メニューに挑戦", emoji: "🌶️", who: "both" },
+  { name: "ドミノを100個並べて倒す", emoji: "🀄", who: "both" },
+  { name: "近所の自販機マップを作る", emoji: "🥤", who: "both" },
+  { name: "雲の形に名前をつけまくる", emoji: "☁️", who: "both" },
+  { name: "家具の配置をぜんぶ変える", emoji: "🛋️", who: "both" },
+  { name: "ご当地ゆるキャラに会いに行く", emoji: "🧸", who: "both" },
+  { name: "1日中敬語で過ごす", emoji: "🙇", who: "both" },
+  { name: "明日の日の出を見に行く", emoji: "🌅", who: "both" },
+  { name: "1日SNS断ち", emoji: "📵", who: "both" },
+  { name: "図書館で一番タイトルが長い本を探す", emoji: "📚", who: "both" },
+  { name: "知らない駅で降りて名物を探す", emoji: "🚉", who: "both" },
+  { name: "ガチャガチャを1つだけコンプ", emoji: "🎰", who: "both" },
+  { name: "近所の坂に名前をつけて制覇", emoji: "⛰️", who: "both" },
+  { name: "50年前の休日を再現する", emoji: "📻", who: "both" },
+  { name: "おみくじを3つの神社で引き比べ", emoji: "⛩️", who: "both" },
+  { name: "ラーメン屋を「ハシゴ」する", emoji: "🍜", who: "both" },
+  { name: "自分の街の観光パンフを作る", emoji: "🗺️", who: "both" },
+  { name: "鳩の数を数える", emoji: "🕊️", who: "both" },
+  { name: "目についた看板の店に入ってみる", emoji: "🪧", who: "both" },
+  { name: "全部の照明を消してキャンドル生活", emoji: "🕯️", who: "both" },
+  { name: "外国語縛りで1時間過ごす", emoji: "🌍", who: "both" },
+  { name: "ホームセンターで用もなく1時間", emoji: "🔨", who: "both" },
+  { name: "ひたすら餃子を包む", emoji: "🥟", who: "both" },
+  { name: "部屋を美術館にして作品を展示", emoji: "🖼️", who: "both" },
+
+  // ひとり向け
+  { name: "一人で焼肉食べ放題", emoji: "🥩", who: "solo" },
+  { name: "一人で遊園地", emoji: "🎢", who: "solo" },
+  { name: "自分にインタビューして記事を書く", emoji: "🎙️", who: "solo" },
+  { name: "部屋で一人ファッションショー", emoji: "👗", who: "solo" },
+  { name: "家事を全部実況しながらやる", emoji: "📢", who: "solo" },
+  { name: "10年後の自分に動画メッセージ", emoji: "📹", who: "solo" },
+  { name: "一人カラオケで90点が出るまで帰れない", emoji: "💯", who: "solo" },
+  { name: "ホールケーキを一人で食べる", emoji: "🎂", who: "solo" },
+  { name: "ラジオ番組にメールを投稿", emoji: "📻", who: "solo" },
+  { name: "回らない寿司に一人で行く", emoji: "🍣", who: "solo" },
+  { name: "早口言葉を完璧にする", emoji: "👅", who: "solo" },
+  { name: "部屋で一番古い物の歴史を調べる", emoji: "🕰️", who: "solo" },
+  { name: "似顔絵屋さんに描いてもらう", emoji: "🎨", who: "solo" },
+  { name: "習い事の体験に飛び込みで申し込む", emoji: "✍️", who: "solo" },
+  { name: "自分専用のテーマソングを作る", emoji: "🎵", who: "solo" },
+
+  // ふたり向け
+  { name: "お互いの服をコーディネートし合う", emoji: "👕", who: "couple" },
+  { name: "相手の似顔絵を描いて交換", emoji: "✏️", who: "couple" },
+  { name: "動物の鳴き声だけで30分会話", emoji: "🐶", who: "couple" },
+  { name: "公園で本気のかくれんぼ", emoji: "🙈", who: "couple" },
+  { name: "お互いのモノマネ選手権", emoji: "🎭", who: "couple" },
+  { name: "手をつないだまま半日過ごす", emoji: "🤝", who: "couple" },
+  { name: "相手のことクイズ大会", emoji: "❓", who: "couple" },
+  { name: "1000円で相手へのプレゼント対決", emoji: "🎁", who: "couple" },
+  { name: "ふたりの歴史年表を作る", emoji: "📜", who: "couple" },
+  { name: "初デートを完全再現", emoji: "💌", who: "couple" },
+  { name: "ペアルックで街を歩く", emoji: "👫", who: "couple" },
+  { name: "腕相撲10本勝負", emoji: "💪", who: "couple" },
+  { name: "絵しりとり50往復", emoji: "🖍️", who: "couple" },
+  { name: "行き先を相手に全部まかせる", emoji: "🎫", who: "couple" },
+  { name: "交互に1工程ずつ料理を作る", emoji: "🍳", who: "couple" },
+  { name: "将来住みたい家の間取りを描く", emoji: "🏠", who: "couple" },
+];
+
+// ---- フォロワー投稿（Googleフォーム → スプレッドシート → CSVで公開）----
+// スプレッドシートの「ファイル > 共有 > ウェブに公開 > CSV」で出たURLを入れる。空なら読み込まない
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzGRYc6DuxFqpOurcA8vcnOTJj-71SaoGyHs9f3tNwVetBMuambSs9LhNqThaVgK7j0B81NYN78gCl/pub?output=csv";
+// 列名（フォームの質問名と、運営が手で追加する「承認」列）
+const COL = { name: "やること", emoji: "絵文字", who: "だれ向け", by: "ニックネーム", ok: "承認" };
+const SEED_NAME = "初期データ"; // 運営が入れた行のニックネーム（結果画面にクレジットを出さない）
+const WHO_MAP = { "ひとり": "solo", "ふたり": "couple", "どちらでも": "both" };
+let remote = [];
+
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+async function loadRemote() {
+  if (!SHEET_CSV_URL) return;
+  try {
+    const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+    const [head, ...rows] = parseCSV(await res.text());
+    const idx = Object.fromEntries(Object.entries(COL).map(([k, v]) => [k, head.indexOf(v)]));
+    remote = rows
+      .filter(r => (r[idx.ok] || "").trim().toUpperCase() === "TRUE" && r[idx.name]?.trim())
+      .map(r => ({
+        name: r[idx.name].trim().slice(0, 24),
+        emoji: (r[idx.emoji] || "").trim() || "💡",
+        who: WHO_MAP[(r[idx.who] || "").trim()] || "both",
+        by: (r[idx.by] || "").trim().slice(0, 16),
+      }));
+    idle();
+  } catch (e) { console.warn("フォロワー投稿の読み込みに失敗", e); }
+}
+
+const ROW = 64;         // 1行の高さ(px)：CSSの --row と合わせる
+const SPIN_ROWS = 40;    // 1回のスピンで流れる行数
+const SPIN_MS = 3800;
+
+let who = "solo";
+let custom = load();
+let current = null;
+let spinning = false;
+
+const $ = (id) => document.getElementById(id);
+const strip = $("strip");
+
+function load() { try { return JSON.parse(localStorage.getItem("custom") || "[]"); } catch { return []; } }
+function save() { try { localStorage.setItem("custom", JSON.stringify(custom)); } catch {} }
+
+function candidates() {
+  const mine = custom.map(name => ({ name, emoji: "⭐" }));
+  const base = remote.length ? remote : ACTIVITIES;
+  return [...mine, ...base.filter(a => a.who === "both" || a.who === who)];
+}
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+function itemEl(a) {
+  const d = document.createElement("div"); d.className = "item";
+  const e = document.createElement("span"); e.className = "e"; e.textContent = a.emoji;
+  const n = document.createElement("span"); n.textContent = a.name;
+  d.append(e, n); return d;
+}
+
+// stripの中身を描画し、centerIdx番目が当たり枠（上から3行目）に来る位置に置く
+function render(items, centerIdx) {
+  strip.replaceChildren(...items.map(itemEl));
+  strip.style.transition = "none";
+  strip.style.transform = `translateY(${-(centerIdx - 2) * ROW}px)`;
+}
+
+function idle() {
+  const list = candidates();
+  current = current && list.some(a => a.name === current.name) ? current : pick(list);
+  render([pick(list), pick(list), current, pick(list), pick(list)], 2);
+  $("count").textContent = `候補 ${list.length} 件`;
+}
+
+function spin() {
+  if (spinning) return;
+  const list = candidates();
+  spinning = true; $("spin").disabled = true; $("result").classList.remove("show");
+  $("machine").classList.add("spinning");
+
+  // [上2行, 現在, ...流れる行..., 当たり, 下2行]
+  const target = pick(list);
+  const items = [pick(list), pick(list), current];
+  for (let i = 0; i < SPIN_ROWS; i++) items.push(pick(list));
+  const targetIdx = items.length;
+  items.push(target, pick(list), pick(list));
+  render(items, 2);
+
+  strip.offsetHeight; // reflow して開始位置を確定
+  strip.classList.add("blur");
+  strip.style.transition = `transform ${SPIN_MS}ms cubic-bezier(.12,.75,.18,1.02)`;
+  strip.style.transform = `translateY(${-(targetIdx - 2) * ROW}px)`;
+  setTimeout(() => strip.classList.remove("blur"), SPIN_MS * .7);
+
+  strip.addEventListener("transitionend", () => {
+    spinning = false; current = target;
+    $("spin").disabled = false; $("machine").classList.remove("spinning");
+    render(items.slice(targetIdx - 2, targetIdx + 3), 2);
+    $("rEmoji").textContent = target.emoji;
+    $("rName").textContent = target.name;
+    $("rBy").textContent = target.by && target.by !== SEED_NAME ? `💡 ${target.by} さんの提案` : "";
+    $("result").classList.add("show");
+    $("result").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, { once: true });
+}
+
+function renderChips() {
+  $("chips").replaceChildren(...custom.map((name, i) => {
+    const el = document.createElement("span"); el.className = "chip"; el.textContent = "⭐ " + name;
+    const x = document.createElement("button"); x.textContent = "×"; x.ariaLabel = "削除";
+    x.onclick = () => { custom.splice(i, 1); save(); renderChips(); idle(); };
+    el.appendChild(x); return el;
+  }));
+}
+
+$("who").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || spinning) return;
+  $("who").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  who = b.dataset.v; idle();
+});
+$("spin").onclick = spin;
+$("again").onclick = spin;
+$("share").onclick = async () => {
+  const text = `今日は「${$("rName").textContent}」に決定！ #きょうなにする`;
+  if (navigator.share) { try { await navigator.share({ text }); } catch {} }
+  else { try { await navigator.clipboard.writeText(text); alert("コピーしました"); } catch {} }
+};
+$("addBtn").onclick = () => {
+  const v = $("customInput").value.trim();
+  if (!v || custom.includes(v)) return;
+  custom.push(v); save(); $("customInput").value = ""; renderChips(); idle();
+};
+$("customInput").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) $("addBtn").click(); });
+
+renderChips(); idle(); loadRemote();
+</script>
+</body>
+</html>
